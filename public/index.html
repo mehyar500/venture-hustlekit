@@ -87,6 +87,14 @@
       <button class="btn btn-lime" id="teaser-btn">Generate my free sample page</button>
       <div class="err" id="teaser-err"></div>
       <div id="teaser-out"></div>
+      <div class="field" style="margin-top:20px;border-top:1px solid #e5e5e5;padding-top:20px">
+        <label for="teaser-email">Get free side-hustle tips by email <span class="hint">(optional)</span></label>
+        <input type="email" id="teaser-email" maxlength="120" placeholder="you@example.com">
+        <button class="btn btn-ghost" id="subscribe-btn" style="margin-top:10px">Subscribe for free tips</button>
+        <div class="err" id="subscribe-err"></div>
+        <div id="subscribe-out" style="font-size:14px;color:#16a34a"></div>
+        <p style="font-size:12px;color:#666;margin-top:10px">No spam. Unsubscribe anytime. <a href="/privacy">Privacy</a></p>
+      </div>
     </div>
   </div>
 </section>
@@ -261,6 +269,41 @@
       err.style.display = "block";
     });
   });
+
+  // Email subscribe for free tier
+  var subBtn = document.getElementById("subscribe-btn"),
+      subEmail = document.getElementById("teaser-email"),
+      subOut = document.getElementById("subscribe-out"),
+      subErr = document.getElementById("subscribe-err");
+  if (subBtn) {
+    subBtn.addEventListener("click", function(){
+      subErr.style.display = "none"; subOut.textContent = "";
+      var email = subEmail.value.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        subErr.textContent = "Please enter a valid email address.";
+        subErr.style.display = "block"; return;
+      }
+      subBtn.disabled = true; subBtn.textContent = "Subscribing…";
+      fetch("/api/hustlekit/subscribe", {
+        method: "POST", headers: {"content-type":"application/json"},
+        body: JSON.stringify({ email: email, source: "teaser" })
+      }).then(function(r){ return r.json(); })
+      .then(function(j){
+        subBtn.disabled = false; subBtn.textContent = "Subscribe for free tips";
+        if (j && j.ok) {
+          subOut.textContent = "✓ " + (j.message || "Subscribed! Check your email to confirm.");
+          subEmail.value = "";
+        } else {
+          subErr.textContent = (j && j.error) || "Something went wrong — try again.";
+          subErr.style.display = "block";
+        }
+      }).catch(function(){
+        subBtn.disabled = false; subBtn.textContent = "Subscribe for free tips";
+        subErr.textContent = "Network error — try again.";
+        subErr.style.display = "block";
+      });
+    });
+  }
 })();
 </script>
 </body>

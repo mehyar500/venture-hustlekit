@@ -1,6 +1,7 @@
 // POST /api/hustlekit/generate — generate the buyer's personalized playbook PDF.
 // Body: { order_token, track?, inputs? } (track/inputs optional — read from the order row)
-// 1. Verifies order by access_token (must be paid or failed; ready → replay).
+// 1. Verifies order by access_token (paid/failed/generating; ready → replay).
+//    'generating' resumes from checkpointed parts (see below).
 // 2. Workers AI (llama-3.3-70b, json_object) writes the personalized playbook JSON.
 // 3. pdf-lib composes a styled multi-page PDF; stored in R2 at playbooks/<token>.pdf.
 // 4. Order marked ready (or failed on any error — buyer retries from success.html).
@@ -357,7 +358,10 @@ export async function onRequestPost({ request, env }) {
       try { pages = JSON.parse(order.output_json || "{}").pages || null; } catch {}
       return json({ ok: true, replay: true, pages });
     }
-    if (order.status !== "paid" && order.status !== "failed") {
+    // 'generating' is resumable: a previous invocation may have checkpointed
+    // parts before dying (isolate eviction / edge timeout) — resume from the
+    // last saved part below. Anything else unpaid is rejected.
+    if (order.status !== "paid" && order.status !== "failed" && order.status !== "generating") {
       return json({ ok: false, error: "not_paid" }, 402);
     }
 
@@ -369,11 +373,19 @@ export async function onRequestPost({ request, env }) {
     if (body.track && TRACKS[body.track]) inputs.track = body.track;
     const t = trackOf(inputs);
 
-    // Mark generating (best effort; also re-arms failed rows for retry)
-    await db.prepare("UPDATE hustlekit_orders SET status='generating' WHERE access_token=? AND status!='ready'").bind(token).run().catch(()=>{});
+    // Mark generating (best effort; also re-arms failed rows for retry).
+    // drive_attempts counts every real generation attempt so the sweep can
+    // cap retries on poison rows (transient infra failures converge; genuine
+    // content failures age out after MAX_DRIVE_ATTEMPTS).
+    await db.prepare("UPDATE hustlekit_orders SET status='generating', drive_attempts=COALESCE(drive_attempts,0)+1 WHERE access_token=? AND status!='ready'").bind(token).run().catch(()=>{});
 
     // ── AI: write the playbook JSON in THREE parts (one call caps out around
     // 2.5-3k words; three calls get us to a real ~15-page playbook) ──
+    // CHECKPOINTED (2026-09-16): each finished part is persisted to output_json
+    // immediately, so a killed invocation (isolate eviction, edge 524) resumes
+    // from the last saved part instead of starting over. Progress is monotonic:
+    // as long as some driver (webhook waitUntil, sweep, buyer retry) invokes
+    // this endpoint, it converges to ready.
     async function genPart(chapterTitles, includeCover, includeExtras, maxTokens) {
       const { system, user } = buildPlaybookPrompt(inputs, chapterTitles, includeCover, includeExtras);
       const part = await aiJson(env, system, user, maxTokens);
@@ -382,23 +394,42 @@ export async function onRequestPost({ request, env }) {
       }
       return part;
     }
-    let data = null, lastErr = null;
-    for (let attempt = 0; attempt < 2 && !data; attempt++) {
-      try {
-        const maxT = attempt === 0 ? 16000 : 12000;
-        const third = Math.ceil(CHAPTER_TITLES.length / 3);
-        const p1 = await genPart(CHAPTER_TITLES.slice(0, third), true, false, maxT);
-        const p2 = await genPart(CHAPTER_TITLES.slice(third, third * 2), false, false, maxT);
-        const p3 = await genPart(CHAPTER_TITLES.slice(third * 2), false, true, maxT);
-        data = {
-          cover: p1.cover || {},
-          chapters: [...(p1.chapters || []), ...(p2.chapters || []), ...(p3.chapters || [])],
-          action_plan: p3.action_plan || [],
-          scripts: p3.scripts || [],
-        };
-      } catch (e) { lastErr = e; data = null; }
+    let stage = {};
+    try { stage = JSON.parse(order.output_json || "{}") || {}; } catch {}
+    if (!stage || typeof stage !== "object" || Array.isArray(stage)) stage = {};
+    if (!stage.parts || typeof stage.parts !== "object") stage.parts = {};
+    const saveStage = async () => {
+      await db.prepare("UPDATE hustlekit_orders SET output_json=?, status='generating' WHERE access_token=? AND status!='ready'")
+        .bind(JSON.stringify(stage), token).run().catch(() => {});
+    };
+    const validPart = (p, n) => p && Array.isArray(p.chapters) && p.chapters.length >= n - 1;
+    const third = Math.ceil(CHAPTER_TITLES.length / 3);
+    const partSpecs = [
+      { key: "p1", titles: CHAPTER_TITLES.slice(0, third), includeCover: true, includeExtras: false },
+      { key: "p2", titles: CHAPTER_TITLES.slice(third, third * 2), includeCover: false, includeExtras: false },
+      { key: "p3", titles: CHAPTER_TITLES.slice(third * 2), includeCover: false, includeExtras: true },
+    ];
+    let lastErr = null;
+    for (const spec of partSpecs) {
+      if (validPart(stage.parts[spec.key], spec.titles.length)) continue; // resume: skip done parts
+      let done = false;
+      for (let attempt = 0; attempt < 2 && !done; attempt++) {
+        try {
+          const maxT = attempt === 0 ? 16000 : 12000;
+          stage.parts[spec.key] = await genPart(spec.titles, spec.includeCover, spec.includeExtras, maxT);
+          await saveStage();
+          done = true;
+        } catch (e) { lastErr = e; }
+      }
+      if (!done) throw new Error("playbook AI failed: " + (lastErr && lastErr.message));
     }
-    if (!data) throw new Error("playbook AI failed: " + (lastErr && lastErr.message));
+    const p1 = stage.parts.p1, p2 = stage.parts.p2, p3 = stage.parts.p3;
+    const data = {
+      cover: p1.cover || {},
+      chapters: [...(p1.chapters || []), ...(p2.chapters || []), ...(p3.chapters || [])],
+      action_plan: p3.action_plan || [],
+      scripts: p3.scripts || [],
+    };
 
     // ── PDF ──
     const { bytes, pages } = await composePdf(data, inputs);
