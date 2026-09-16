@@ -236,7 +236,7 @@ async function composePdf(data, inputs) {
     need(30);
     page.drawText(label, { x: MARGIN, y, size: 10.5, font: helv, color: INK });
     const lw = helv.widthOfTextAtSize(label + " ", 10.5);
-    page.drawLine({ x1: MARGIN + lw, y1: y - 4, x2: MARGIN + contentW, y2: y - 4, thickness: 1, color: MUTED });
+    page.drawLine({ start: { x: MARGIN + lw, y: y - 4 }, end: { x: MARGIN + contentW, y: y - 4 }, thickness: 1, color: MUTED });
     y -= 28;
   }
 
@@ -283,7 +283,7 @@ async function composePdf(data, inputs) {
       x += contentW * frac;
     }
     y -= 6;
-    page.drawLine({ x1: MARGIN, y1: y, x2: MARGIN + contentW, y2: y, thickness: 1.2, color: INK });
+    page.drawLine({ start: { x: MARGIN, y }, end: { x: MARGIN + contentW, y }, thickness: 1.2, color: INK });
     y -= 18;
   }
   trackerHeader();
@@ -291,7 +291,7 @@ async function composePdf(data, inputs) {
     need(26);
     let x = MARGIN;
     for (const [, frac] of cols) {
-      page.drawLine({ x1: x + 4, y1: y - 2, x2: x + contentW * frac - 6, y2: y - 2, thickness: 0.7, color: MUTED });
+      page.drawLine({ start: { x: x + 4, y: y - 2 }, end: { x: x + contentW * frac - 6, y: y - 2 }, thickness: 0.7, color: MUTED });
       x += contentW * frac;
     }
     y -= 24;
