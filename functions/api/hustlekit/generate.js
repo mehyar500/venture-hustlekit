@@ -62,7 +62,10 @@ function buildPlaybookPrompt(inputs) {
       HONESTY_RULES + " " +
       "Return ONLY a JSON object with exactly these keys: " +
       '{"cover": {"title": string, "subtitle": string (one line naming their niche+track), "buyer_line": string (one line: their hours/week, goal, experience)}, ' +
-      '"chapters": [{"title": string, "body": string (~250-300 words of substance)}] — one per chapter title below, in order, ' +
+      '"chapters": [{"title": string, "body": string}] — one per chapter title below, in order. ' +
+      "CRITICAL LENGTH REQUIREMENT: every chapter body MUST be 350-450 words of substantive, specific, " +
+      "immediately usable content with concrete examples, numbers, and exact wording where relevant. " +
+      "A short or generic chapter is a FAILED chapter. Write in depth — this is a premium paid playbook." +
       '"action_plan": [{"day_range": string like "Days 1-3", "tasks": [string x3-4]}], ' +
       '"scripts": [{"situation": string, "script": string (the exact words to send/say)}] — 4 scripts: cold DM, cold email, follow-up, discovery-call opener}. ' +
       "Personalize every chapter with the buyer's specifics. Keep bodies tight: no filler, no repetition.",
@@ -276,7 +279,7 @@ export async function onRequestPost({ request, env }) {
       try {
         const { system, user } = buildPlaybookPrompt(inputs);
         const shorter = attempt === 1 ? " IMPORTANT: keep every chapter body under 120 words — be terse." : "";
-        data = await aiJson(env, system, user + shorter, attempt === 0 ? 12000 : 9000);
+        data = await aiJson(env, system, user + shorter, attempt === 0 ? 16000 : 12000);
         if (!data || !Array.isArray(data.chapters) || data.chapters.length < 8) {
           throw new Error("playbook: too few chapters");
         }
