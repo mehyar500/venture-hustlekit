@@ -31,6 +31,10 @@ const CHAPTER_TITLES = [
   "Delivery system",
   "Getting testimonials",
   "From first client to retainer",
+  "Your AI workflow stack",
+  "Objection handling",
+  "Raising your rates",
+  "Scaling to your income goal",
   "Your 30-day action plan",
   "What to avoid",
 ];
@@ -281,8 +285,8 @@ export async function onRequestPost({ request, env }) {
     // Mark generating (best effort; also re-arms failed rows for retry)
     await db.prepare("UPDATE hustlekit_orders SET status='generating' WHERE access_token=? AND status!='ready'").bind(token).run().catch(()=>{});
 
-    // ── AI: write the playbook JSON in TWO parts (one call caps out around
-    // 2.5-3k words; two calls get us to a real ~15-page playbook) ──
+    // ── AI: write the playbook JSON in THREE parts (one call caps out around
+    // 2.5-3k words; three calls get us to a real ~15-page playbook) ──
     async function genPart(chapterTitles, includeCover, includeExtras, maxTokens) {
       const { system, user } = buildPlaybookPrompt(inputs, chapterTitles, includeCover, includeExtras);
       const part = await aiJson(env, system, user, maxTokens);
@@ -295,14 +299,15 @@ export async function onRequestPost({ request, env }) {
     for (let attempt = 0; attempt < 2 && !data; attempt++) {
       try {
         const maxT = attempt === 0 ? 16000 : 12000;
-        const half = Math.ceil(CHAPTER_TITLES.length / 2);
-        const p1 = await genPart(CHAPTER_TITLES.slice(0, half), true, false, maxT);
-        const p2 = await genPart(CHAPTER_TITLES.slice(half), false, true, maxT);
+        const third = Math.ceil(CHAPTER_TITLES.length / 3);
+        const p1 = await genPart(CHAPTER_TITLES.slice(0, third), true, false, maxT);
+        const p2 = await genPart(CHAPTER_TITLES.slice(third, third * 2), false, false, maxT);
+        const p3 = await genPart(CHAPTER_TITLES.slice(third * 2), false, true, maxT);
         data = {
           cover: p1.cover || {},
-          chapters: [...(p1.chapters || []), ...(p2.chapters || [])],
-          action_plan: p2.action_plan || [],
-          scripts: p2.scripts || [],
+          chapters: [...(p1.chapters || []), ...(p2.chapters || []), ...(p3.chapters || [])],
+          action_plan: p3.action_plan || [],
+          scripts: p3.scripts || [],
         };
       } catch (e) { lastErr = e; data = null; }
     }
