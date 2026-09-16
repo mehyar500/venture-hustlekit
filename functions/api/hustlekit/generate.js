@@ -220,6 +220,93 @@ async function composePdf(data, inputs) {
     y -= 14;
   }
 
+  // ── worksheets (deterministic — print and fill in) ──
+  function checkboxRow(label, sub) {
+    need(34);
+    page.drawRectangle({ x: MARGIN, y: y - 4, width: 13, height: 13, borderColor: MUTED, borderWidth: 1.2 });
+    page.drawText(label, { x: MARGIN + 22, y, size: 10.5, font: helvB, color: INK });
+    if (sub) {
+      const sl = wrapText(sub, helv, 9.5, contentW - 30);
+      let sy = y - 15;
+      for (const ln of sl) { page.drawText(ln, { x: MARGIN + 22, y: sy, size: 9.5, font: helv, color: MUTED }); sy -= 13; }
+      y = sy - 8;
+    } else { y -= 24; }
+  }
+  function fillLine(label) {
+    need(30);
+    page.drawText(label, { x: MARGIN, y, size: 10.5, font: helv, color: INK });
+    const lw = helv.widthOfTextAtSize(label + " ", 10.5);
+    page.drawLine({ x1: MARGIN + lw, y1: y - 4, x2: MARGIN + contentW, y2: y - 4, thickness: 1, color: MUTED });
+    y -= 28;
+  }
+
+  heading("Your 30-day tracker", true);
+  drawPara("Print this page. Check off each day you hit the target. The rule from Chapter 8: outreach is a numbers game — the tracker is how you prove to yourself you're playing it.", { size: 10.5 });
+  const trackerThemes = [
+    "Portfolio piece — build one sample in your niche",
+    "Outreach block — 10 new prospects contacted",
+    "Follow-ups — every unanswered message from 3+ days ago",
+    "Outreach block — 10 new prospects contacted",
+    "Skill reps — 1 hour deliberate practice + study one competitor",
+    "Outreach block — 10 new prospects contacted",
+    "Rest + review — tally replies, refine your opener",
+  ];
+  for (let d = 1; d <= 30; d++) {
+    need(26);
+    page.drawRectangle({ x: MARGIN, y: y - 3, width: 12, height: 12, borderColor: MUTED, borderWidth: 1.2 });
+    page.drawText("Day " + d, { x: MARGIN + 20, y, size: 10, font: helvB, color: INK });
+    const theme = trackerThemes[(d - 1) % 7];
+    page.drawText("— " + theme, { x: MARGIN + 72, y, size: 9.5, font: helv, color: MUTED });
+    y -= 22;
+    if (d % 10 === 0) { y -= 6; }
+  }
+
+  heading("Pricing worksheet", true);
+  drawPara("Fill this in with real numbers before you quote your first client. Your floor price must cover costs + time + tax buffer — never quote below it.", { size: 10.5 });
+  fillLine("Monthly costs (tools, subscriptions): $");
+  fillLine("Hours available per week: ");
+  fillLine("Minimum acceptable hourly rate: $");
+  fillLine("Tax buffer (set aside 25-30%): $");
+  fillLine("Floor price for a starter project: $");
+  fillLine("Target price for a starter project: $");
+  fillLine("Monthly retainer target (from Chapter 12): $");
+
+  heading("Outreach tracker", true);
+  drawPara("Log every prospect. If a row has no follow-up date, you left money on the table — follow up at day 3 and day 7, every time.", { size: 10.5 });
+  const cols = [["Prospect", 0.30], ["Channel", 0.18], ["Sent", 0.16], ["Follow-up", 0.18], ["Reply?", 0.18]];
+  function trackerHeader() {
+    need(30);
+    let x = MARGIN;
+    page.drawText("", { x, y, size: 1, font: helv, color: INK });
+    for (const [label, frac] of cols) {
+      page.drawText(label, { x: x + 4, y, size: 9, font: helvB, color: MUTED });
+      x += contentW * frac;
+    }
+    y -= 6;
+    page.drawLine({ x1: MARGIN, y1: y, x2: MARGIN + contentW, y2: y, thickness: 1.2, color: INK });
+    y -= 18;
+  }
+  trackerHeader();
+  for (let r = 0; r < 24; r++) {
+    need(26);
+    let x = MARGIN;
+    for (const [, frac] of cols) {
+      page.drawLine({ x1: x + 4, y1: y - 2, x2: x + contentW * frac - 6, y2: y - 2, thickness: 0.7, color: MUTED });
+      x += contentW * frac;
+    }
+    y -= 24;
+    if ((r + 1) % 8 === 0 && r < 23) { trackerHeader(); }
+  }
+
+  heading("Niche validation checklist", true);
+  drawPara("Check all 6 before you commit to a niche. If you can't check at least 5, narrow or pick a different niche.", { size: 10.5 });
+  checkboxRow("They already pay for help", "Your niche spends money on marketing, content, or operations today — not 'someday'.");
+  checkboxRow("You can name 50 prospects", "Fifty real businesses/people you could contact this week. If not, the niche is too small or too vague.");
+  checkboxRow("You speak their language", "You understand their day-to-day well enough to write an opener that doesn't sound generic.");
+  checkboxRow("Results are visible", "You can point to before/after: more leads, better content, saved hours. Clients buy visible outcomes.");
+  checkboxRow("You can reach them directly", "Email, DMs, or in person — no gatekeepers you can't get past.");
+  checkboxRow("You'd enjoy 100 of them", "You'll live in this niche for months. Pick one you don't dread.");
+
   // ── honesty close ──
   need(120);
   page.drawRectangle({ x: MARGIN, y: y - 96, width: contentW, height: 110, color: rgb(0.97, 0.97, 0.98), borderColor: MUTED, borderWidth: 1 });
