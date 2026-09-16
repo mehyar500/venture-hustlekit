@@ -48,27 +48,32 @@ function wrapText(text, font, size, maxWidth) {
   return lines;
 }
 
-function buildPlaybookPrompt(inputs) {
+function buildPlaybookPrompt(inputs, chapterTitles, includeCover, includeExtras) {
   const t = trackOf(inputs);
   const expLine = {
     beginner: "a complete beginner — include a practice/portfolio-first ramp before any paid outreach",
     some: "someone with some experience — skip basics, focus on packaging and client acquisition",
     experienced: "an experienced practitioner — focus on positioning, pricing power, and retainers",
   }[inputs.experience_level];
+  const keys = [
+    '"chapters": [{"title": string, "body": string}] — one per chapter title below, in order.',
+    "CRITICAL LENGTH REQUIREMENT: every chapter body MUST be 350-450 words of substantive, specific, " +
+    "immediately usable content with concrete examples, numbers, and exact wording where relevant. " +
+    "A short or generic chapter is a FAILED chapter. Write in depth — this is a premium paid playbook.",
+  ];
+  if (includeCover) {
+    keys.unshift('"cover": {"title": string, "subtitle": string (one line naming their niche+track), "buyer_line": string (one line: their hours/week, goal, experience)}');
+  }
+  if (includeExtras) {
+    keys.push('"action_plan": [{"day_range": string like "Days 1-3", "tasks": [string x3-4]}]');
+    keys.push('"scripts": [{"situation": string, "script": string (the exact words to send/say)}] — 4 scripts: cold DM, cold email, follow-up, discovery-call opener');
+  }
   return {
     system:
       "You are HustleKit's playbook engine. You write personalized, practical " +
       "side-hustle playbooks — concrete, specific, and immediately actionable. " +
       HONESTY_RULES + " " +
-      "Return ONLY a JSON object with exactly these keys: " +
-      '{"cover": {"title": string, "subtitle": string (one line naming their niche+track), "buyer_line": string (one line: their hours/week, goal, experience)}, ' +
-      '"chapters": [{"title": string, "body": string}] — one per chapter title below, in order. ' +
-      "CRITICAL LENGTH REQUIREMENT: every chapter body MUST be 350-450 words of substantive, specific, " +
-      "immediately usable content with concrete examples, numbers, and exact wording where relevant. " +
-      "A short or generic chapter is a FAILED chapter. Write in depth — this is a premium paid playbook." +
-      '"action_plan": [{"day_range": string like "Days 1-3", "tasks": [string x3-4]}], ' +
-      '"scripts": [{"situation": string, "script": string (the exact words to send/say)}] — 4 scripts: cold DM, cold email, follow-up, discovery-call opener}. ' +
-      "Personalize every chapter with the buyer's specifics. Keep bodies tight: no filler, no repetition.",
+      "Return ONLY a JSON object with exactly these keys: " + keys.join(" "),
     user:
       `Track: ${t.name} — the craft is ${t.craft}. Typical offers: ${t.offers}. ` +
       `Where this track's clients hide: ${t.hunting}. Delivery looks like: ${t.deliverable}. ` +
@@ -77,9 +82,12 @@ function buildPlaybookPrompt(inputs) {
       `income goal "${inputs.income_goal || "not specified"}"; ` +
       `experience: ${inputs.experience_level} (${expLine}); ` +
       `niche interest "${inputs.niche || "not specified"}". ` +
-      `Chapter titles in order: ${CHAPTER_TITLES.map((c, i) => `${i + 1}. ${c}`).join(" | ")}. ` +
-      "The 30-day action plan must fit their stated hours/week realistically. " +
-      "Scripts must be written in first person, ready to copy-paste, referencing their niche.",
+      `Chapter titles in order: ${chapterTitles.map((c, i) => `${i + 1}. ${c}`).join(" | ")}. ` +
+      (includeExtras
+        ? "The 30-day action plan must fit their stated hours/week realistically. " +
+          "Scripts must be written in first person, ready to copy-paste, referencing their niche."
+        : "") +
+      "Personalize every chapter with the buyer's specifics. No filler, no repetition.",
   };
 }
 
@@ -273,16 +281,29 @@ export async function onRequestPost({ request, env }) {
     // Mark generating (best effort; also re-arms failed rows for retry)
     await db.prepare("UPDATE hustlekit_orders SET status='generating' WHERE access_token=? AND status!='ready'").bind(token).run().catch(()=>{});
 
-    // ── AI: write the playbook JSON (retry once, shorter, on parse failure) ──
+    // ── AI: write the playbook JSON in TWO parts (one call caps out around
+    // 2.5-3k words; two calls get us to a real ~15-page playbook) ──
+    async function genPart(chapterTitles, includeCover, includeExtras, maxTokens) {
+      const { system, user } = buildPlaybookPrompt(inputs, chapterTitles, includeCover, includeExtras);
+      const part = await aiJson(env, system, user, maxTokens);
+      if (!part || !Array.isArray(part.chapters) || part.chapters.length < chapterTitles.length - 1) {
+        throw new Error("playbook: too few chapters in part");
+      }
+      return part;
+    }
     let data = null, lastErr = null;
     for (let attempt = 0; attempt < 2 && !data; attempt++) {
       try {
-        const { system, user } = buildPlaybookPrompt(inputs);
-        const shorter = attempt === 1 ? " IMPORTANT: keep every chapter body under 120 words — be terse." : "";
-        data = await aiJson(env, system, user + shorter, attempt === 0 ? 16000 : 12000);
-        if (!data || !Array.isArray(data.chapters) || data.chapters.length < 8) {
-          throw new Error("playbook: too few chapters");
-        }
+        const maxT = attempt === 0 ? 16000 : 12000;
+        const half = Math.ceil(CHAPTER_TITLES.length / 2);
+        const p1 = await genPart(CHAPTER_TITLES.slice(0, half), true, false, maxT);
+        const p2 = await genPart(CHAPTER_TITLES.slice(half), false, true, maxT);
+        data = {
+          cover: p1.cover || {},
+          chapters: [...(p1.chapters || []), ...(p2.chapters || [])],
+          action_plan: p2.action_plan || [],
+          scripts: p2.scripts || [],
+        };
       } catch (e) { lastErr = e; data = null; }
     }
     if (!data) throw new Error("playbook AI failed: " + (lastErr && lastErr.message));
