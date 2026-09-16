@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your playbook is on its way — HustleKit</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#0a0a0b">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" fill="#0a0a0b"/></svg></span>HustleKit</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="status-card" id="card">
+    <div class="spinner" id="spinner"></div>
+    <h1 id="title">Payment confirmed — writing your playbook…</h1>
+    <p id="desc">Your personalized 15-page playbook is being generated around your answers. This usually takes a couple of minutes. Keep this tab open.</p>
+    <div class="progress-steps" id="steps">
+      <span class="pstep done" id="s-paid">✓ Paid</span>
+      <span class="pstep now" id="s-gen">Writing…</span>
+      <span class="pstep" id="s-ready">Ready</span>
+    </div>
+    <div id="action"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var token = new URLSearchParams(window.location.search).get("token") || "";
+  var title = document.getElementById("title"), desc = document.getElementById("desc"),
+      action = document.getElementById("action"), spinner = document.getElementById("spinner");
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+  function setSteps(state){
+    var gen = document.getElementById("s-gen"), ready = document.getElementById("s-ready");
+    gen.className = "pstep" + (state==="ready" ? " done" : state==="failed" ? "" : " now");
+    gen.textContent = state==="ready" ? "✓ Written" : state==="failed" ? "Failed" : "Writing…";
+    ready.className = "pstep" + (state==="ready" ? " done" : "");
+  }
+  if(!token){
+    spinner.style.display = "none";
+    title.textContent = "Missing download link";
+    desc.textContent = "This page needs the personal link from your receipt email. Check your inbox for your HustleKit receipt.";
+    return;
+  }
+  var timer = null, tries = 0;
+  function poll(){
+    tries++;
+    fetch("/api/hustlekit/status?token=" + encodeURIComponent(token))
+      .then(function(r){ return r.json().then(function(j){ return {status:r.status, body:j}; }); })
+      .then(function(res){
+        if(res.status === 404 || !res.body || !res.body.ok){
+          clearInterval(timer); spinner.style.display = "none";
+          title.textContent = "Link not recognized";
+          desc.textContent = "We couldn't find this purchase. Double-check the link in your receipt email, or contact info@mehyar.us.";
+          return;
+        }
+        var st = res.body.order_status;
+        if(st === "ready"){
+          clearInterval(timer); spinner.style.display = "none"; setSteps("ready");
+          title.textContent = "Your playbook is ready 🎉";
+          desc.textContent = "Your personalized HustleKit playbook was written around your answers. Download it below — a copy was also emailed to " + esc(res.body.email||"you") + ".";
+          action.innerHTML = '<a class="btn btn-lime" href="/deliverable.html?token=' + encodeURIComponent(token) + '">Open my playbook</a>';
+        } else if(st === "failed"){
+          clearInterval(timer); spinner.style.display = "none"; setSteps("failed");
+          title.textContent = "Generation hit a snag";
+          desc.textContent = "Your payment went through — only the generation failed. Hit retry and we'll write it again, free.";
+          action.innerHTML = '<button class="btn btn-lime" id="retry">Retry generation</button>';
+          document.getElementById("retry").addEventListener("click", function(){
+            this.disabled = true; this.textContent = "Retrying…";
+            fetch("/api/hustlekit/generate", { method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify({order_token: token}) })
+              .then(function(){ action.innerHTML = ""; spinner.style.display = ""; setSteps("paid"); title.textContent = "Payment confirmed — writing your playbook…"; desc.textContent = "Retrying now. Keep this tab open."; timer = setInterval(poll, 4000); poll(); });
+          });
+        }
+        // else still paid/generating: keep polling (cap at ~10 min)
+        if(tries > 150){ clearInterval(timer); desc.textContent = "Still working on it — check your email for the download link, or refresh this page."; }
+      })
+      .catch(function(){ /* transient: keep polling */ });
+  }
+  timer = setInterval(poll, 4000);
+  poll();
+})();
+</script>
+</body>
+</html>

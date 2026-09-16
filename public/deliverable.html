@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your HustleKit playbook</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#0a0a0b">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" fill="#0a0a0b"/></svg></span>HustleKit</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="status-card" id="card">
+    <div class="spinner" id="spinner"></div>
+    <h1 id="title">Loading your playbook…</h1>
+    <p id="desc">One moment.</p>
+    <div id="action"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var token = new URLSearchParams(window.location.search).get("token") || "";
+  var title = document.getElementById("title"), desc = document.getElementById("desc"),
+      action = document.getElementById("action"), spinner = document.getElementById("spinner");
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+  if(!token){
+    spinner.style.display = "none";
+    title.textContent = "Missing download link";
+    desc.textContent = "This page needs the personal link from your receipt email.";
+    return;
+  }
+  fetch("/api/hustlekit/status?token=" + encodeURIComponent(token))
+    .then(function(r){ return r.json().then(function(j){ return {status:r.status, body:j}; }); })
+    .then(function(res){
+      spinner.style.display = "none";
+      if(res.status === 404 || !res.body || !res.body.ok){
+        title.textContent = "Link not recognized";
+        desc.textContent = "We couldn't find this purchase. Double-check the link in your receipt email, or contact info@mehyar.us.";
+        return;
+      }
+      var b = res.body;
+      if(b.order_status !== "ready"){
+        title.textContent = "Not ready yet";
+        desc.textContent = b.order_status === "failed"
+          ? "Generation hit a snag — your payment is safe. Head back to your confirmation page to retry."
+          : "Your playbook is still being written. Check back in a minute — or watch your inbox.";
+        action.innerHTML = '<a class="btn btn-ghost" href="/success.html?token=' + encodeURIComponent(token) + '">Check status</a>';
+        return;
+      }
+      title.textContent = "Your HustleKit playbook";
+      var m = b.manifest || {};
+      desc.innerHTML = "Personalized for <b>" + esc(b.email||"you") + "</b>" +
+        (m.track_name ? " · " + esc(m.track_name) : "") +
+        (m.pages ? " · " + esc(m.pages) + " pages" : "") +
+        ". This link is personal to you — keep it somewhere safe.";
+      action.innerHTML = '<a class="btn btn-lime" href="/api/hustlekit/deliverable?token=' + encodeURIComponent(token) + '" download="hustlekit-playbook.pdf">⬇ Download the PDF</a>' +
+        '<p style="margin-top:14px;font-size:.88rem;color:var(--muted)">A copy was also emailed to you. Lost it? <a href="mailto:info@mehyar.us">info@mehyar.us</a></p>';
+    })
+    .catch(function(){
+      spinner.style.display = "none";
+      title.textContent = "Couldn't load";
+      desc.textContent = "Network error — refresh and try again.";
+    });
+})();
+</script>
+</body>
+</html>

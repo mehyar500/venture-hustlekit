@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get your HustleKit playbook — $27 one time</title>
+<meta name="description" content="Answer 5 questions, pick your track, and get your personalized 15-page HustleKit playbook. $27 one time, secure Stripe checkout.">
+<link rel="canonical" href="https://hustlekit.mehyar.us/buy.html">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#0a0a0b">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" fill="#0a0a0b"/></svg></span>HustleKit</a>
+    <div class="nav-links"><a href="/#faq">FAQ</a><a href="mailto:info@mehyar.us">Contact</a></div>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="wrap">
+    <div class="eyebrow">Checkout</div>
+    <h2>Five questions. One playbook.</h2>
+    <p class="lede">Your answers personalize every chapter — niche, offer, pricing, scripts, and your 30-day plan. Then secure checkout via Stripe ($27 one time).</p>
+
+    <div class="teaser-box" style="max-width:680px">
+      <form id="buy-form" novalidate>
+        <div class="field">
+          <label for="f-email">Email <span class="hint">— your playbook is delivered here</span></label>
+          <input type="email" id="f-email" maxlength="200" placeholder="you@example.com" autocomplete="email">
+          <div class="err" id="e-email"></div>
+        </div>
+        <div class="field">
+          <label for="f-track">Your track</label>
+          <select id="f-track">
+            <option value="ai-writing">✍️ AI freelance writing</option>
+            <option value="ai-video">🎬 AI video editing</option>
+            <option value="ai-social">📣 AI social-media management</option>
+          </select>
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="f-skills">Current skills <span class="hint">— what can you already do?</span></label>
+            <textarea id="f-skills" maxlength="300" placeholder="e.g. decent writer, basic Canva, good on camera"></textarea>
+          </div>
+          <div class="field">
+            <label for="f-niche">Niche interest <span class="hint">— who do you want to work with?</span></label>
+            <textarea id="f-niche" maxlength="300" placeholder="e.g. real estate agents, fitness coaches, SaaS startups"></textarea>
+          </div>
+          <div class="field">
+            <label for="f-hours">Hours per week <span class="hint">— realistic number</span></label>
+            <input type="number" id="f-hours" min="1" max="80" placeholder="e.g. 10">
+          </div>
+          <div class="field">
+            <label for="f-income">Income goal <span class="hint">— monthly target</span></label>
+            <input type="text" id="f-income" maxlength="60" placeholder="e.g. $1,000/mo">
+          </div>
+          <div class="field full">
+            <label for="f-exp">Experience level</label>
+            <select id="f-exp">
+              <option value="beginner">Beginner — starting from scratch</option>
+              <option value="some">Some experience — done a little of this before</option>
+              <option value="experienced">Experienced — done this, want clients</option>
+            </select>
+          </div>
+        </div>
+        <div class="err" id="e-form"></div>
+        <button type="submit" class="btn btn-lime" id="buy-btn" style="width:100%;margin-top:10px">Continue to secure checkout — $27</button>
+        <p style="margin-top:14px;font-size:.88rem;color:var(--muted);text-align:center">🔒 Secure Stripe checkout · ↩ 7-day redo-or-refund · No subscription, ever.</p>
+      </form>
+    </div>
+    <div class="note" style="max-width:680px"><b>Straight talk:</b> HustleKit is a skill + AI leverage kit — real work, real clients. Nothing here promises income. If the playbook isn't useful, the 7-day redo-or-refund covers you.</div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-inner">
+      <div><a class="brand" href="/" style="font-size:1rem">HustleKit</a><br>A MehyarSoft product.</div>
+      <div><a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> · <a href="mailto:info@mehyar.us">info@mehyar.us</a></div>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var CHECKOUT_URL = "https://mehyar.us/api/pay/checkout";
+  function val(id){ return document.getElementById(id).value.trim(); }
+  function setErr(id,msg){ var e=document.getElementById(id); e.textContent=msg||""; e.style.display=msg?"block":"none"; }
+  document.getElementById("buy-form").addEventListener("submit", function(ev){
+    ev.preventDefault();
+    setErr("e-email"); setErr("e-form");
+    var email = val("f-email");
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ setErr("e-email","Enter a valid email — your playbook is delivered there."); return; }
+    var params = {
+      track: val("f-track"),
+      skills: val("f-skills").slice(0,300),
+      hours_per_week: val("f-hours").slice(0,10),
+      income_goal: val("f-income").slice(0,60),
+      experience_level: val("f-exp"),
+      niche: val("f-niche").slice(0,300)
+    };
+    if(!params.skills || !params.niche){ setErr("e-form","Tell us your current skills and niche interest — the playbook is built around them."); return; }
+    var hours = parseInt(params.hours_per_week,10);
+    if(params.hours_per_week && (isNaN(hours)||hours<1||hours>80)){ setErr("e-form","Hours per week should be a number between 1 and 80."); return; }
+    var body = {
+      product_id: "hustlekit-starter",
+      email: email,
+      params: params,
+      success_url: "https://hustlekit.mehyar.us/success.html",
+      cancel_url: "https://hustlekit.mehyar.us/#pricing"
+    };
+    if(JSON.stringify(body.params).length > 2048){ setErr("e-form","Your answers are a bit long — trim them down a little."); return; }
+    var btn = document.getElementById("buy-btn");
+    btn.disabled = true; btn.textContent = "Creating your checkout…";
+    fetch(CHECKOUT_URL, { method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify(body) })
+      .then(function(r){ return r.json().then(function(j){ return {status:r.status, body:j}; }); })
+      .then(function(res){
+        if(res.body && res.body.ok && res.body.checkout_url){ window.location = res.body.checkout_url; return; }
+        btn.disabled = false; btn.textContent = "Continue to secure checkout — $27";
+        setErr("e-form", "Checkout failed (" + ((res.body&&res.body.error)||("HTTP "+res.status)) + ") — please try again.");
+      })
+      .catch(function(){
+        btn.disabled = false; btn.textContent = "Continue to secure checkout — $27";
+        setErr("e-form","Network error — check your connection and try again.");
+      });
+  });
+})();
+</script>
+</body>
+</html>

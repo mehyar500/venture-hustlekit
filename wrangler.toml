@@ -1,0 +1,19 @@
+# HustleKit Pages project.
+# IMPORTANT: no [vars] section — ever. Dashboard/plain-text env on this project
+# is wiped by deploys that carry [vars]. Bindings below are resource bindings
+# (not vars) and are safe in wrangler.toml; secret values are never committed.
+name = "hustlekit"
+pages_build_output_dir = "public"
+compatibility_date = "2026-09-01"
+
+[ai]
+binding = "AI"
+
+[[d1_databases]]
+binding = "LEADS_DB"
+database_name = "mehyar_leads_prod"
+database_id = "e4f22065-e3e8-4772-87a8-51d4976be042"
+
+[[r2_buckets]]
+binding = "HUSTLEKIT_R2"
+bucket_name = "hustlekit-deliverables"
