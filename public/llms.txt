@@ -1,0 +1,28 @@
+# HustleKit
+
+HustleKit is a $27 one-time AI side-hustle starter kit: pick one of three tracks (AI freelance writing, AI video editing, AI social-media management), answer 5 intake questions, and get a personalized 15-page playbook covering your niche, your offer, your pricing, where to find your first clients, word-for-word outreach scripts, and a 30-day action plan. Generated fresh per buyer and delivered by email with a private download link. 7-day redo-or-refund. A MehyarSoft LLC product.
+
+## Key pages
+
+- / — landing page with a free one-page sample generator and the $27 checkout
+- /buy.html — 5-question intake form + Stripe checkout
+- /privacy.html — privacy policy
+- /terms.html — terms of service, including the 7-day redo-or-refund policy
+- /success.html — post-Stripe confirmation; polls payment status, links to the playbook
+- /deliverable.html — the buyer's private playbook page (token-gated), with Download-PDF via print
+
+## API
+
+- POST /api/hustlekit/teaser — free: { track, niche, ...intake } → one sample playbook page.
+- POST /api/hustlekit/generate — paid: { order_token, ...intake } → full playbook manifest. Token-gated. Idempotent.
+- GET /api/hustlekit/deliverable?token= — token-gated: playbook PDF bytes for the buyer.
+- GET /api/hustlekit/status — polls payment/generation status.
+- POST /api/hustlekit/subscribe, POST /api/hustlekit/confirm, POST /api/hustlekit/unsubscribe — email list management.
+
+## Pricing
+
+$27 one-time via Stripe, through the centralized https://mehyar.us/api/pay/checkout. No subscription. 7-day redo-or-refund.
+
+## Compliance
+
+Educational material about freelancing with AI leverage — not financial advice. No income promises or earnings guarantees anywhere in the playbook, on the site, or in emails. Results depend on the buyer's effort, skills, market, and execution.
