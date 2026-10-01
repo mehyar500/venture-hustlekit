@@ -4,15 +4,15 @@
 <meta charset="UTF-8">
 <!-- TRACKING:GA4-GTM -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Your playbook is on its way — HustleKit</title>
-<meta name="description" content="Your personalized 15-page HustleKit playbook is being generated. $27 one time, delivered in minutes.">
-<link rel="canonical" href="https://hustlekit.mehyar.us/success.html">
+<title>HustleKit — Your playbook is on its way</title>
+<meta name="description" content="Your personalized 15-page HustleKit playbook is being generated now. Download link delivered by email in minutes. $27 one time, 7-day redo-or-refund.">
+<link rel="canonical" href="https://hustlekit.mehyar.us/success">
 <meta name="robots" content="noindex">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="HustleKit">
 <meta property="og:title" content="Your playbook is on its way — HustleKit">
 <meta property="og:description" content="Your personalized 15-page AI side-hustle playbook is being generated.">
-<meta property="og:url" content="https://hustlekit.mehyar.us/success.html">
+<meta property="og:url" content="https://hustlekit.mehyar.us/success">
 <meta property="og:image" content="https://hustlekit.mehyar.us/favicon.svg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Your playbook is on its way — HustleKit">
@@ -78,7 +78,7 @@
           clearInterval(timer); spinner.style.display = "none"; setSteps("ready");
           title.textContent = "Your playbook is ready 🎉";
           desc.textContent = "Your personalized HustleKit playbook was written around your answers. Download it below — a copy was also emailed to " + esc(res.body.email||"you") + ".";
-          action.innerHTML = '<a class="btn btn-lime" href="/deliverable.html?token=' + encodeURIComponent(token) + '">Open my playbook</a>';
+          action.innerHTML = '<a class="btn btn-lime" href="/deliverable?token=' + encodeURIComponent(token) + '">Open my playbook</a>';
         } else if(st === "failed"){
           clearInterval(timer); spinner.style.display = "none"; setSteps("failed");
           title.textContent = "Generation hit a snag";
@@ -104,7 +104,7 @@
   <div class="wrap">
     <div class="footer-inner">
       <div><a class="brand" href="/" style="font-size:1rem">HustleKit</a><br>A MehyarSoft product.</div>
-      <div><a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> · <a href="mailto:info@mehyar.us">info@mehyar.us</a></div>
+      <div><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="mailto:info@mehyar.us">info@mehyar.us</a></div>
     </div>
   </div>
 </footer>
