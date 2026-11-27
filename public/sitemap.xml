@@ -11,5 +11,10 @@
   <url><loc>https://hustlekit.mehyar.us/black-friday-fund/</loc><lastmod>2026-11-23</lastmod></url>
   <url><loc>https://hustlekit.mehyar.us/between-shifts/</loc><lastmod>2026-11-23</lastmod></url>
   <url><loc>https://hustlekit.mehyar.us/christmas-fund/</loc><lastmod>2026-11-23</lastmod></url>
+  <url>
+    <loc>https://hustlekit.mehyar.us/christmas-compare/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
   <url><loc>https://hustlekit.mehyar.us/christmas-quiz-match/</loc><lastmod>2026-11-25</lastmod></url>
 </urlset>
